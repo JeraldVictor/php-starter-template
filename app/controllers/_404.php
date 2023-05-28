@@ -7,6 +7,6 @@ class _404
 
 	public function index()
 	{
-		$this->response(array("Message" => "Page Not found"), 404);
+		$this->response(array("msg" => "Page Not found"), 404);
 	}
 }

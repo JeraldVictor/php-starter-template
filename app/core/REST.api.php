@@ -19,11 +19,15 @@ trait REST
         return $_SERVER['HTTP_REFERER'];
     }
 
-    public function response($data, $status = 200)
+    public function response($data, $status = 200, $error = false, $msg = "")
     {
         $this->_code = ($status) ? $status : 200;
         $this->set_headers();
-        echo json_encode($data);
+        $response = [];
+        $response['error'] = $error;
+        $response['msg'] = $msg;
+        $response['data'] = $data;
+        echo json_encode($response);
         exit;
     }
 
@@ -80,23 +84,47 @@ trait REST
         return $_SERVER['REQUEST_METHOD'];
     }
 
+    private function read_inputs()
+    {
+        $request = [];
+        $inputJSON = file_get_contents('php://input');
+        $input = json_decode($inputJSON, TRUE);
+
+        if (!empty($_POST)) {
+            $request = $this->cleanInputs($_POST);
+        }
+        if (!empty($input)) {
+            $request = [$request, ...$this->cleanInputs($input)];
+        }
+
+
+        $array = [];
+        if (str_contains($_SERVER['REQUEST_URI'], "?")) {
+            $params = explode("/", $_SERVER['REQUEST_URI']);
+            parse_str(parse_url(end($params), PHP_URL_QUERY), $array);
+        }
+        $request["params"] = $array;
+
+        return $request;
+    }
+
     private function inputs()
     {
         switch ($this->get_request_method()) {
             case "POST":
-                $this->_request = $this->cleanInputs($_POST);
+                $this->_request = $this->read_inputs();
                 break;
             case "GET":
-                //break;
+                $this->_request = $this->read_inputs();
+                break;
             case "DELETE":
-                $this->_request = $this->cleanInputs($_GET);
+                $this->_request = $this->read_inputs();
                 break;
             case "PUT":
-                parse_str(file_get_contents("php://input"), $this->_request);
-                $this->_request = $this->cleanInputs($this->_request);
+                $this->_request = $this->read_inputs();
                 break;
             default:
-                $this->response('', 406);
+                $this->response(["msg" => "Method Not Acceptable"], 406);
                 break;
         }
     }
